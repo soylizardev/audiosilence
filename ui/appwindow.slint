@@ -1,0 +1,419 @@
+import { Button, ScrollView, Slider } from "std-widgets.slint";
+
+export component TrackHeader {
+    in-out property <string> track-name;
+    in-out property <bool> muted;
+    in-out property <bool> soloed;
+
+    callback mute-toggled;
+    callback solo-toggled;
+
+    width: 150px;
+    height: 60px;
+
+    Rectangle {
+        background: #222;
+        width: 100%;
+        height: 100%;
+
+        VerticalLayout {
+            padding: 4px;
+            spacing: 2px;
+
+            Text {
+                text: root.track-name;
+                color: #ddd;
+                font-size: 10px;
+                horizontal-alignment: center;
+                overflow: elide;
+            }
+
+            HorizontalLayout {
+                spacing: 4px;
+                alignment: center;
+
+                Rectangle {
+                    width: 26px;
+                    height: 20px;
+                    border-radius: 3px;
+                    background: root.muted ? #cc4444 : #333;
+
+                    TouchArea {
+                        clicked => {
+                            root.muted = !root.muted;
+                            root.mute-toggled();
+                        }
+                    }
+
+                    Text {
+                        text: "M";
+                        color: root.muted ? #ffffff : #aaaaaa;
+                        font-size: 9px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        width: 100%;
+                        height: 100%;
+                    }
+                }
+
+                Rectangle {
+                    width: 26px;
+                    height: 20px;
+                    border-radius: 3px;
+                    background: root.soloed ? #ccaa00 : #333;
+
+                    TouchArea {
+                        clicked => {
+                            root.soloed = !root.soloed;
+                            root.solo-toggled();
+                        }
+                    }
+
+                    Text {
+                        text: "S";
+                        color: root.soloed ? #000000 : #aaaaaa;
+                        font-size: 9px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        width: 100%;
+                        height: 100%;
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component Ruler {
+    in-out property <length> beat-width: 80px;
+    in-out property <int> total-beats: 256;
+
+    height: 30px;
+
+    Rectangle {
+        background: #222;
+        width: 100%;
+        height: 100%;
+
+        HorizontalLayout {
+            for beatIdx in 256: Rectangle {
+                width: root.beat-width;
+                height: 100%;
+
+                Rectangle {
+                    width: Math.mod(beatIdx, 4) == 0 ? 2px : 1px;
+                    height: 100%;
+                    background: Math.mod(beatIdx, 4) == 0 ? #555 : #3A3A3A;
+                }
+
+                if Math.mod(beatIdx, 4) == 0: Text {
+                    text: beatIdx / 4;
+                    color: #aaa;
+                    font-size: 9px;
+                    x: 3px;
+                    y: 1px;
+                }
+            }
+        }
+    }
+}
+
+export component TimelineTrack {
+    in-out property <length> beat-width: 80px;
+    in-out property <int> total-beats: 256;
+    in-out property <bool> even-row: false;
+
+    height: 60px;
+
+    Rectangle {
+        background: root.even-row ? #282828 : #242424;
+        width: 100%;
+        height: 100%;
+
+        HorizontalLayout {
+            for beatIdx in 256: Rectangle {
+                width: root.beat-width;
+                height: 100%;
+
+                Rectangle {
+                    width: Math.mod(beatIdx, 4) == 0 ? 2px : 1px;
+                    height: 100%;
+                    background: Math.mod(beatIdx, 4) == 0 ? #333 : #2A2A2A;
+                }
+            }
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "audiosilence";
+    background: #1E1E1E;
+
+    in-out property <length> playhead-position: 0px;
+    in-out property <bool> playing;
+    in-out property <bool> recording;
+
+    callback play;
+    callback pause;
+    callback stop;
+    callback toggle-mixer;
+    callback start-recording;
+    callback stop-recording;
+    callback quit;
+
+    property <length> beat-width: 80px;
+    property <int> track-count: 8;
+    property <int> total-beats: 256;
+
+    VerticalLayout {
+        spacing: 0;
+
+        // === Toolbar ===
+        Rectangle {
+            height: 40px;
+            background: #252525;
+
+            HorizontalLayout {
+                padding: 6px;
+                spacing: 6px;
+
+                Button {
+                    text: "Play";
+                    enabled: !root.playing;
+                    min-width: 50px;
+                    clicked => { root.play(); }
+                }
+                Button {
+                    text: "Pause";
+                    enabled: root.playing;
+                    min-width: 50px;
+                    clicked => { root.pause(); }
+                }
+                Button {
+                    text: "Stop";
+                    min-width: 50px;
+                    clicked => { root.stop(); }
+                }
+
+                Rectangle {
+                    width: 10px;
+                }
+
+                Text {
+                    text: "audiosilence";
+                    color: white;
+                    font-size: 14px;
+                    vertical-alignment: center;
+                }
+
+                Rectangle { width: 0px; }
+
+                Button {
+                    text: "Mixer";
+                    clicked => { root.toggle-mixer(); }
+                }
+
+                Rectangle {
+                    height: 28px;
+                    border-radius: 4px;
+                    background: recording ? #cc3333 : #444;
+
+                    TouchArea {
+                        clicked => {
+                            if !root.recording { root.start-recording(); }
+                            else { root.stop-recording(); }
+                        }
+                    }
+
+                    Text {
+                        text: recording ? "Rec..." : "Record";
+                        color: #ffffff;
+                        font-size: 11px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        width: 100%;
+                        height: 100%;
+                    }
+                }
+
+                Button {
+                    text: "Quit";
+                    clicked => { root.quit(); }
+                }
+            }
+        }
+
+        // === Main Workspace: Two-Column Layout ===
+        HorizontalLayout {
+            spacing: 0;
+
+            // --- Left Column: Track Headers (fixed 150px) ---
+            Rectangle {
+                width: 150px;
+                background: #1A1A1A;
+
+                VerticalLayout {
+                    spacing: 0;
+
+                    // 30px spacer to align with ruler on the right
+                    Rectangle {
+                        height: 30px;
+                    }
+
+                    for trackIdx in 8: TrackHeader {
+                        track-name: "Track " + (trackIdx + 1);
+                    }
+                }
+            }
+
+            // --- Right Column: Scrollable Timeline Workspace ---
+            ScrollView {
+                horizontal-stretch: 1;
+
+                Rectangle {
+                    width: root.beat-width * root.total-beats;
+                    height: 30px + 60px * root.track-count;
+
+                    VerticalLayout {
+                        spacing: 0;
+
+                        Ruler {
+                            beat-width: root.beat-width;
+                            total-beats: root.total-beats;
+                        }
+
+                        for trackIdx in 8: TimelineTrack {
+                            beat-width: root.beat-width;
+                            total-beats: root.total-beats;
+                            even-row: Math.mod(trackIdx, 2) == 0;
+                        }
+                    }
+
+                    // Playhead overlay
+                    Rectangle {
+                        x: root.playhead-position;
+                        y: 0px;
+                        width: 2px;
+                        height: 100%;
+                        background: #FF2222;
+                        opacity: 0.85;
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component ChannelStrip {
+    preferred-width: 90px;
+
+    in-out property <string> channel-name: "Track 1";
+    in-out property <float> volume: 0.8;
+    in-out property <float> pan: 0.0;
+    in-out property <float> vu-level: 0.0;
+
+    callback volume-changed(float);
+
+    Rectangle {
+        background: #161616;
+        border-radius: 6px;
+        width: 100%;
+        height: 100%;
+
+        VerticalLayout {
+            padding: 6px;
+            spacing: 4px;
+
+            Text {
+                text: root.channel-name;
+                color: #ddd;
+                font-size: 10px;
+                horizontal-alignment: center;
+            }
+
+            HorizontalLayout {
+                spacing: 2px;
+                Text {
+                    text: "L";
+                    color: #777;
+                    font-size: 8px;
+                    vertical-alignment: center;
+                }
+                Slider {
+                    minimum: -1.0;
+                    maximum: 1.0;
+                    value: root.pan;
+                    changed(newValue) => { root.pan = newValue; }
+                }
+                Text {
+                    text: "R";
+                    color: #777;
+                    font-size: 8px;
+                    vertical-alignment: center;
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 4px;
+
+                Rectangle {
+                    width: 20px;
+                    height: 100px;
+                    background: #222;
+                    border-radius: 4px;
+
+                    Rectangle {
+                        width: 100%;
+                        height: min(root.vu-level * 100px, 100px);
+                        background: root.vu-level > 0.8 ? #cc3333 :
+                                     root.vu-level > 0.6 ? #ccaa00 : #33aa33;
+                        border-radius: 4px;
+                        y: 100px - self.height;
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: 4px;
+
+                    Text {
+                        text: "Vol";
+                        color: #777;
+                        font-size: 8px;
+                    }
+
+                    Slider {
+                        orientation: vertical;
+                        minimum: 0.0;
+                        maximum: 1.0;
+                        value: root.volume;
+                        changed(newValue) => {
+                            root.volume = newValue;
+                            root.volume-changed(newValue);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component MixerWindow inherits Window {
+    title: "Mixer";
+    width: 820px;
+    height: 220px;
+    background: #1E1E1E;
+
+    callback channel-volume-changed(int, float);
+
+    HorizontalLayout {
+        padding: 8px;
+        spacing: 6px;
+
+        for channel in 8: ChannelStrip {
+            channel-name: "Track " + (channel + 1);
+            volume-changed(val) => {
+                root.channel-volume-changed(channel, val);
+            }
+        }
+    }
+}

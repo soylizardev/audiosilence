@@ -1,0 +1,18 @@
+[package]
+name = "audiosilence"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+slint = "1.6.0"
+cpal = "0.18"
+libc = "0.2"
+ringbuf = "0.5"
+midir = "0.11.0"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+hound = "3.5"
+plugin_host = "0.1.0"
+wide = "1.5.0"
+
+[build-dependencies]
+slint-build = "1.6.0"
