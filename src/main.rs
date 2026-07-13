@@ -118,7 +118,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         master_mute = true;
                         transport.reset();
                     }
-                    Command::SetFrequency(_) => {}
                     Command::SetVolume(gain) => master_gain = gain as f64,
                     Command::NoteOn { note, .. } => {
                         let freq =
